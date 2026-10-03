@@ -1,4 +1,10 @@
-"""Round-robin weekly chore assignments + swap legality."""
+"""Round-robin weekly chore assignments + swap legality.
+
+跨周相位（phase）语义：每周网格按 ``days * len(task_ids)`` 个槽位推进一个
+连续游标。上一周的终点相位必须等于下一周的起点相位；skip 周不落任何格，
+但仍按同样的网格大小推进相位，因此取消 skip 后重新生成能与前后周无缝衔接。
+"""
+
 
 def build_week_slots(member_ids: list[int], task_ids: list[int], days: int = 7) -> list[dict]:
     """Assign each (day, task) to members in round-robin by task then day."""
@@ -12,6 +18,37 @@ def build_week_slots(member_ids: list[int], task_ids: list[int], days: int = 7) 
             slots.append({"day": day, "task_id": tid, "member_id": mid})
             idx += 1
     return slots
+
+
+def grid_size(member_ids: list[int], task_ids: list[int], days: int = 7) -> int:
+    """Number of slots one week (or one skipped week) advances the phase by."""
+    if not member_ids:
+        raise ValueError("empty_members")
+    return days * len(task_ids)
+
+
+def advance_phase(phase: int, member_ids: list[int], task_ids: list[int], days: int = 7) -> int:
+    """Advance the cursor by a full week grid without emitting any slots (skip 周)."""
+    return phase + grid_size(member_ids, task_ids, days)
+
+
+def build_phase_week(member_ids: list[int], task_ids: list[int], start_phase: int,
+                     days: int = 7) -> dict:
+    """Build one week whose first slot resumes the round-robin at ``start_phase``.
+
+    返回 ``{"slots", "start_phase", "end_phase"}``；空成员名册是非法输入，
+    抛 ``ValueError("empty_members")``，且不产生任何部分结果。
+    """
+    if not member_ids:
+        raise ValueError("empty_members")
+    n = len(member_ids)
+    phase = start_phase
+    slots = []
+    for day in range(days):
+        for tid in task_ids:
+            slots.append({"day": day, "task_id": tid, "member_id": member_ids[phase % n]})
+            phase += 1
+    return {"slots": slots, "start_phase": start_phase, "end_phase": phase}
 
 
 def swap_legal(slots: list[dict], a_day: int, a_task: int, b_day: int, b_task: int) -> dict:
