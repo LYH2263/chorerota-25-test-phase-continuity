@@ -1,11 +1,20 @@
 """Round-robin weekly chore assignments + swap legality."""
 
-def build_week_slots(member_ids: list[int], task_ids: list[int], days: int = 7) -> list[dict]:
-    """Assign each (day, task) to members in round-robin by task then day."""
-    if not member_ids or not task_ids:
+def build_week_slots(member_ids: list[int], task_ids: list[int], days: int = 7,
+                     phase: int = 0) -> list[dict]:
+    """Assign each (day, task) to members in round-robin by task then day.
+
+    ``phase`` 是跨周连续轮转的起点偏移（见 app.engines.phase）：周内第 k 个格
+    取 ``member_ids[(phase + k) % len(member_ids)]``。本周终点相位为
+    ``phase + 任务数*天数``，即下一周应传入的起点。空成员属非法输入，抛
+    ValueError；空任务则生成 0 个格。
+    """
+    if not member_ids:
+        raise ValueError("empty_members")
+    if not task_ids:
         return []
     slots = []
-    idx = 0
+    idx = phase
     for day in range(days):
         for tid in task_ids:
             mid = member_ids[idx % len(member_ids)]
